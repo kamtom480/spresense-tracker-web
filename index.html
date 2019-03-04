@@ -3,22 +3,81 @@
 
 <head>
     <title>Bike tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+        crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
+        crossorigin=""></script>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        html,
+        body,
+        #mapid {
+            height: 100%;
+            width: 100%;
+        }
+
+        .bike {
+            width: 3rem;
+            height: 3rem;
+            display: block;
+            left: -1.5rem;
+            top: -1.5rem;
+            position: relative;
+            border-radius: 3rem 3rem 0;
+            transform: rotate(45deg);
+            border: 1px solid #FFFFFF
+        }
+    </style>
 </head>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
-<script>
-    $(function () {
-        var socket = io();
-        socket.on('position', function (msg) {
-            $('#gps').text(msg);
-        });
-    });
-</script>
 
 <body>
-    <div>
-        <p id="gps"> HI</p>
-    </div>
+    <div id="mapid"></div>
+    <script>
+        var mymap = L.map('mapid');
+
+        L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=<access token>', {
+            maxZoom: 18,
+            id: 'mapbox.streets'
+        }).addTo(mymap);
+
+        var stringToColour = function (str) {
+            var hash = 0;
+            for (var i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            var colour = '#';
+            for (var i = 0; i < 3; i++) {
+                var value = (hash >> (i * 8)) & 0xFF;
+                colour += ('00' + value.toString(16)).substr(-2);
+            }
+            return colour;
+        }
+
+        $(function () {
+            var socket = io();
+            socket.on('position', function (msg) {
+                mymap.setView([msg.lat, msg.lng], 13);
+                const myCustomColour = stringToColour(msg.id);
+
+                const icon = L.divIcon({
+                    className: "my-custom-pin",
+                    iconAnchor: [0, 24],
+                    labelAnchor: [-6, 0],
+                    popupAnchor: [0, -36],
+                    html: `<span class="bike" style="background-color: ${myCustomColour};" />`
+                })
+                var marker = L.marker([msg.lat, msg.lng], { icon: icon }).addTo(mymap);
+                var text = '<b>' + msg.id + '</b><br>' + msg.time;
+                marker.bindPopup(text).openPopup();
+            });
+        });
+    </script>
 </body>
 
 </html>
